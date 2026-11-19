@@ -1,63 +1,39 @@
 #include <iostream>
 #include <ctime>
+#include <termios.h>
+#include <unistd.h>
+#include <cstdlib>
+#include <cmath>
+
+
 using namespace std;
+struct Main {
+	char arr[40][20];
+	bool IsRunning = true;
+	char choice = ' ';
+	int q = 0;
+	int score = 0;
+	int LifeTime = 0;
+} Main;
 
-char arr[40][20];
-bool IsRunning = true;
+class Entity
+{
+public:
+    int x;
+    int y;
 
-
-struct {
-	int x;
-	int y;
-} player, enemy, npc;
-
-char choice = ' ';
-int a = 0;
-int q = 0;
-int score = 0;
-int LifeTime = 0;
-	
-
-
-int moving(int wll, int dirctn, int& axis) {
-	if (axis != wll) {
+    int moving(int wll, int dirctn, int& axis) {
+        if (axis != wll) {
 		if (dirctn) {
 			axis++;
-		}
+            }
 		else {
 			axis--;
-		}
-	}
-	return axis;
-}
-
-void matrix() {
-	cout << "\x1B[2J\x1B[H";
-	for (int i = 0; i < 20; i++) {
-		for (int k = 0;k < 40; k++) {
-			cout<<arr[k][i];
-		}
-		cout<<endl;
-	}
-}
-
-void collision_check(bool &IsR, int LiT) {
-	if (arr[player.x][player.y] == arr[npc.x][npc.y]) {
-		score++;
-		npc.x = rand() % 38 + 1;
-		npc.y = rand() % 18 + 1;
-	}
-
-	if (arr[player.x][player.y] == arr[enemy.x][enemy.y]) {
-			matrix();
-            cout<<"Game over!\nYour life time: "<<LiT<<endl;
-			cout<<"Your score: "<<score<<endl;
-            cin>>a;
-            IsR = false;
-	}
-}
-
-void enemy_moving(int wll, int &mov, int diff) {
+            }
+        }
+        return axis;
+    }
+    void npc_moving(int wll, int &mov, int diff) {
 		if (diff < 0) {
 			if (mov != 0) {
 				mov--;
@@ -68,17 +44,97 @@ void enemy_moving(int wll, int &mov, int diff) {
 				mov++;
 			}
 		}
+    }
+
+    Entity(int pos_x, int pos_y)
+    {
+        x = pos_x;
+        y = pos_y;
+    }
+
+    
 
 
+};	
 
+void matrix() {
+	cout << "\x1B[2J\x1B[H";
+	for (int i = 0; i < 20; i++) {
+		for (int k = 0;k < 40; k++) {
+			cout<<Main.arr[k][i];
+		}
+		cout<<endl;
+	}
 }
+
+void collision_check(bool &IsR, int LiT, Entity& player, Entity& enemy, Entity& npc) {
+	if (player.x == npc.x && player.y == npc.y) {
+		Main.score++;
+		npc.x = rand() % 38 + 1;
+		npc.y = rand() % 18 + 1;
+	}
+
+	if (player.x == enemy.x && player.y == enemy.y) {
+			matrix();
+            cout<<"Game over!\nYour life time: "<<LiT<<endl;
+			cout<<"Your score: "<<Main.score<<endl;
+            IsR = false;
+	}
+}
+
+void setRawMode() {
+	termios oldSettings;
+	tcgetattr(STDIN_FILENO, &oldSettings);
+	termios newSettings = oldSettings;
+	newSettings.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &newSettings);
+}
+
+void restoreTerminal() {
+	termios defaultSettings;
+	tcgetattr(STDIN_FILENO, &defaultSettings);
+	defaultSettings.c_lflag |= (ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &defaultSettings);
+}
+
+char gettingChar() {
+	setRawMode();
+	char ch;
+	bool isGetting = 1;
+	while (isGetting) {
+		if (read(STDIN_FILENO, &ch, 1 ) > 0) {
+			isGetting = 0;
+		}
+	}
+	restoreTerminal();
+	return ch;
+}
+
+void update_npc(Entity& npc, const Entity& player) {
+    int diff_x = player.x - npc.x;
+    int diff_y = player.y - npc.y;
+    int step_x = (diff_x > 0) ? -1 : (diff_x < 0 ? 1 : (rand() % 2 == 0 ? 1 : -1));
+    int step_y = (diff_y > 0) ? -1 : (diff_y < 0 ? 1 : (rand() % 2 == 0 ? 1 : -1));
+    bool can_move_x = (npc.x + step_x >= 0 && npc.x + step_x <= 39);
+    bool can_move_y = (npc.y + step_y >= 0 && npc.y + step_y <= 19);
+    if (abs(diff_x) >= abs(diff_y) && can_move_x) {
+        npc.x += step_x;
+    } 
+    else if (can_move_y) {
+        npc.y += step_y;
+    } 
+    else if (can_move_x) {
+        npc.x += step_x;
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
 	
 	for (int j = 0; j < 40; j++) {
 		for (int p = 0; p < 20; p++) {
-			arr[j][p] = ':';
+			Main.arr[j][p] = ':';
 		}
 	}
 
@@ -86,25 +142,22 @@ int main(int argc, char *argv[])
 
 	matrix();
 
-	player.x = 0;
-	player.y = 0;
-	enemy.x = 39;
-	enemy.y = 19;
-	npc.x = rand() % 38 + 1;
-	npc.y = rand() % 18 + 1;
+    Entity player(0, 0);
+    Entity enemy(39, 19);
+    Entity npc(rand() % 38 + 1, rand() % 18 + 1);
 	
-	arr[npc.x][npc.y] = '&';
-	arr[enemy.x][enemy.y] = '@';
-	arr[player.x][player.y] = '#';
+	Main.arr[npc.x][npc.y] = '&';
+	Main.arr[enemy.x][enemy.y] = '@';
+	Main.arr[player.x][player.y] = '#';
 	
 	matrix();
 
-	while(IsRunning) {
+	while(Main.IsRunning) {
 		matrix();
-		arr[enemy.x][enemy.y] = ':';
-		arr[npc.x][npc.y] = ':';
+		Main.arr[enemy.x][enemy.y] = ':';
+		Main.arr[npc.x][npc.y] = ':';
 		
-		q++;
+		Main.q++;
 
 		int diff_x = player.x - enemy.x;
 		int diff_y = player.y - enemy.y;
@@ -114,43 +167,45 @@ int main(int argc, char *argv[])
 		int i_diff_y = abs(diff_y);
 		int i_nDiff_x = abs(nDiff_x);
 		int i_nDiff_y = abs(nDiff_y);
-		if (q%2 == 0) {
-			if (i_nDiff_x < i_nDiff_y) {
-				enemy_moving(19, npc.y, nDiff_y*-1);
-			}
-			else {
-				enemy_moving(39, npc.x, nDiff_x*-1);
-			}
+		if (Main.q%2 == 0) {
+//			if (i_nDiff_x < i_nDiff_y) {
+//				npc.npc_moving(19, npc.y, nDiff_y*-1);
+//			}
+//			else {
+//				npc.npc_moving(39, npc.x, nDiff_x*-1);
+//			}
+
+			update_npc(npc, player);
+
 			if (i_diff_x < i_diff_y) {
-				enemy_moving(19, enemy.y, diff_y);
+				npc.npc_moving(19, enemy.y, diff_y);
 			}
 			else {
-				enemy_moving(39, enemy.x, diff_x);
+				npc.npc_moving(39, enemy.x, diff_x);
 			}
 		}
 
+		Main.arr[player.x][player.y] = ':';
 
+		Main.choice = gettingChar();
 
-		arr[player.x][player.y] = ':';
-
-		cout<<"letter: ";
-		cin>>choice;
-		switch(choice) {
-			case 'a': moving(0, 0, player.x);
+		switch(Main.choice) {
+			case 'a': player.moving(0, 0, player.x);
 				break;
-			case 'd': moving(39, 1, player.x);
+			case 'd': player.moving(39, 1, player.x);
 				break;
-			case 'w': moving(0, 0, player.y);
+			case 'w': player.moving(0, 0, player.y);
 				break;
-			case 's': moving(19, 1, player.y);
+			case 's': player.moving(19, 1, player.y);
+				break;
+			case 'q': Main.IsRunning = 0;
 		}
 		
-		arr[npc.x][npc.y] = '&';
-		arr[enemy.x][enemy.y] = '@';
-		arr[player.x][player.y] = '#';
+		Main.arr[npc.x][npc.y] = '&';
+		Main.arr[enemy.x][enemy.y] = '@';
+		Main.arr[player.x][player.y] = '#';
 		
-		collision_check(IsRunning, LifeTime);
-		LifeTime++;
+		collision_check(Main.IsRunning, Main.LifeTime, player, enemy, npc);
+		Main.LifeTime++;
 	}
 }
-
