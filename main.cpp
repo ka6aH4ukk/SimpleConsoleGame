@@ -18,38 +18,94 @@ struct Main {
 
 class Entity
 {
+private:
+	int x;
+	int y;
+	char symbol;
+
 public:
-    int x;
-    int y;
 
-    int moving(int wll, int dirctn, int& axis) {
-        if (axis != wll) {
-		if (dirctn) {
-			axis++;
-            }
-		else {
-			axis--;
-            }
-        }
-        return axis;
+	int getX() const { return x; }
+	int getY() const { return y; }
+	int getSymbol() const { return symbol; }
+
+    void moving(int dx, int dy) {
+
+		if ( x + dx <= 39 && x + dx >= 0 ) {
+			x = x + dx;
+		}
+		if ( y + dy <= 19 && y + dy >= 0 ) {
+			y = y + dy;
+		}
+        
     }
-    void npc_moving(int wll, int &mov, int diff) {
-		if (diff < 0) {
-			if (mov != 0) {
-				mov--;
+    void enemy_moving(const Entity& target) {
+		int diff_x = target.x - x;
+		int diff_y = target.y - y;
+		int nDiff_x = target.x - x;
+		int nDiff_y = target.y - y;
+		int i_diff_x = abs(diff_x);
+		int i_diff_y = abs(diff_y);
+		int i_nDiff_x = abs(nDiff_x);
+		int i_nDiff_y = abs(nDiff_y);
+		if (i_diff_x > i_diff_y) {
+			if (diff_x < 0) {
+				if (x != 0) {
+					x--;
+				}
+			}
+			else {
+				if (x != 39) {
+					x++;
+				}
 			}
 		}
 		else {
-			if (mov != wll) {
-				mov++;
+			if (diff_y < 0) {
+				if (y != 0) {
+					y--;
+				}
+			}
+			else {
+				if (y != 19) {
+					y++;
+				}
 			}
 		}
+
     }
 
-    Entity(int pos_x, int pos_y)
+	void respawning() {
+			x = rand() % 38 +1;
+			y = rand() % 18 +1;
+	}
+	bool collision_check(const Entity& other) const {
+		return x == other.x && y == other.y;
+	}
+
+	void fleeFrom(const Entity& threat) {
+		int diff_x = threat.x - x;
+		int diff_y = threat.y - y;
+		int step_x = (diff_x > 0) ? -1 : (diff_x < 0 ? 1 : (rand() % 2 == 0 ? 1 : -1));
+		int step_y = (diff_y > 0) ? -1 : (diff_y < 0 ? 1 : (rand() % 2 == 0 ? 1 : -1));
+		bool can_move_x = (x + step_x >= 0 && x + step_x <= 39);
+		bool can_move_y = (y + step_y >= 0 && y + step_y <= 19);
+		if (abs(diff_x) >= abs(diff_y) && can_move_x) {
+			x += step_x;
+		} 
+		else if (can_move_y) {
+			y += step_y;
+		} 
+		else if (can_move_x) {
+			x += step_x;
+    }
+}
+
+    Entity(int pos_x, int pos_y, char sym)
     {
         x = pos_x;
         y = pos_y;
+		symbol = sym;
     }
 
     
@@ -64,21 +120,6 @@ void matrix() {
 			cout<<Main.arr[k][i];
 		}
 		cout<<endl;
-	}
-}
-
-void collision_check(bool &IsR, int LiT, Entity& player, Entity& enemy, Entity& npc) {
-	if (player.x == npc.x && player.y == npc.y) {
-		Main.score++;
-		npc.x = rand() % 38 + 1;
-		npc.y = rand() % 18 + 1;
-	}
-
-	if (player.x == enemy.x && player.y == enemy.y) {
-			matrix();
-            cout<<"Game over!\nYour life time: "<<LiT<<endl;
-			cout<<"Your score: "<<Main.score<<endl;
-            IsR = false;
 	}
 }
 
@@ -110,23 +151,7 @@ char gettingChar() {
 	return ch;
 }
 
-void update_npc(Entity& npc, const Entity& player) {
-    int diff_x = player.x - npc.x;
-    int diff_y = player.y - npc.y;
-    int step_x = (diff_x > 0) ? -1 : (diff_x < 0 ? 1 : (rand() % 2 == 0 ? 1 : -1));
-    int step_y = (diff_y > 0) ? -1 : (diff_y < 0 ? 1 : (rand() % 2 == 0 ? 1 : -1));
-    bool can_move_x = (npc.x + step_x >= 0 && npc.x + step_x <= 39);
-    bool can_move_y = (npc.y + step_y >= 0 && npc.y + step_y <= 19);
-    if (abs(diff_x) >= abs(diff_y) && can_move_x) {
-        npc.x += step_x;
-    } 
-    else if (can_move_y) {
-        npc.y += step_y;
-    } 
-    else if (can_move_x) {
-        npc.x += step_x;
-    }
-}
+
 
 
 int main(int argc, char *argv[])
@@ -142,70 +167,57 @@ int main(int argc, char *argv[])
 
 	matrix();
 
-    Entity player(0, 0);
-    Entity enemy(39, 19);
-    Entity npc(rand() % 38 + 1, rand() % 18 + 1);
+    Entity player(0, 0,'#');
+    Entity enemy(39, 19, '@');
+    Entity npc(rand() % 38 + 1, rand() % 18 + 1, '&');
 	
-	Main.arr[npc.x][npc.y] = '&';
-	Main.arr[enemy.x][enemy.y] = '@';
-	Main.arr[player.x][player.y] = '#';
+	Main.arr[npc.getX()][npc.getY()] = npc.getSymbol();
+	Main.arr[enemy.getX()][enemy.getY()] = enemy.getSymbol();
+	Main.arr[player.getX()][player.getY()] = player.getSymbol();
 	
 	matrix();
 
 	while(Main.IsRunning) {
 		matrix();
-		Main.arr[enemy.x][enemy.y] = ':';
-		Main.arr[npc.x][npc.y] = ':';
 		
 		Main.q++;
-
-		int diff_x = player.x - enemy.x;
-		int diff_y = player.y - enemy.y;
-		int nDiff_x = player.x - npc.x;
-		int nDiff_y = player.y - npc.y;
-		int i_diff_x = abs(diff_x);
-		int i_diff_y = abs(diff_y);
-		int i_nDiff_x = abs(nDiff_x);
-		int i_nDiff_y = abs(nDiff_y);
+		Main.arr[enemy.getX()][enemy.getY()] = ':';
+		Main.arr[npc.getX()][npc.getY()] = ':';
 		if (Main.q%2 == 0) {
-//			if (i_nDiff_x < i_nDiff_y) {
-//				npc.npc_moving(19, npc.y, nDiff_y*-1);
-//			}
-//			else {
-//				npc.npc_moving(39, npc.x, nDiff_x*-1);
-//			}
-
-			update_npc(npc, player);
-
-			if (i_diff_x < i_diff_y) {
-				npc.npc_moving(19, enemy.y, diff_y);
-			}
-			else {
-				npc.npc_moving(39, enemy.x, diff_x);
-			}
+			npc.fleeFrom(player);
+			enemy.enemy_moving(player);
 		}
 
-		Main.arr[player.x][player.y] = ':';
+		Main.arr[player.getX()][player.getY()] = ':';
 
 		Main.choice = gettingChar();
 
 		switch(Main.choice) {
-			case 'a': player.moving(0, 0, player.x);
+			case 'a': player.moving(-1, 0);
 				break;
-			case 'd': player.moving(39, 1, player.x);
+			case 'd': player.moving(1, 0);
 				break;
-			case 'w': player.moving(0, 0, player.y);
+			case 'w': player.moving(0, -1);
 				break;
-			case 's': player.moving(19, 1, player.y);
+			case 's': player.moving(0, 1);
 				break;
 			case 'q': Main.IsRunning = 0;
 		}
 		
-		Main.arr[npc.x][npc.y] = '&';
-		Main.arr[enemy.x][enemy.y] = '@';
-		Main.arr[player.x][player.y] = '#';
+		Main.arr[npc.getX()][npc.getY()] = '&';
+		Main.arr[enemy.getX()][enemy.getY()] = '@';
+		Main.arr[player.getX()][player.getY()] = '#';
 		
-		collision_check(Main.IsRunning, Main.LifeTime, player, enemy, npc);
+		if (player.collision_check(enemy)) {
+			Main.IsRunning = false;
+			cout << "Game Over!" << endl;
+			cout << "Your score: " << Main.score << endl;
+			cout << "Your lifetime: " << Main.LifeTime << endl;
+		}
+		if (player.collision_check(npc)) {
+			npc.respawning();
+			Main.score++;
+		}
 		Main.LifeTime++;
 	}
 }
