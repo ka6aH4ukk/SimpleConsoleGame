@@ -25,6 +25,14 @@ private:
 
 public:
 
+
+    Entity(int pos_x, int pos_y, char sym)
+    {
+        x = pos_x;
+        y = pos_y;
+		symbol = sym;
+    }
+
 	int getX() const { return x; }
 	int getY() const { return y; }
 	int getSymbol() const { return symbol; }
@@ -42,12 +50,8 @@ public:
     void enemy_moving(const Entity& target) {
 		int diff_x = target.x - x;
 		int diff_y = target.y - y;
-		int nDiff_x = target.x - x;
-		int nDiff_y = target.y - y;
 		int i_diff_x = abs(diff_x);
 		int i_diff_y = abs(diff_y);
-		int i_nDiff_x = abs(nDiff_x);
-		int i_nDiff_y = abs(nDiff_y);
 		if (i_diff_x > i_diff_y) {
 			if (diff_x < 0) {
 				if (x != 0) {
@@ -100,16 +104,6 @@ public:
 			x += step_x;
     }
 }
-
-    Entity(int pos_x, int pos_y, char sym)
-    {
-        x = pos_x;
-        y = pos_y;
-		symbol = sym;
-    }
-
-    
-
 
 };	
 
@@ -165,8 +159,6 @@ int main(int argc, char *argv[])
 
 	srand(time(0));
 
-	matrix();
-
     Entity player(0, 0,'#');
     Entity enemy(39, 19, '@');
     Entity npc(rand() % 38 + 1, rand() % 18 + 1, '&');
@@ -174,8 +166,6 @@ int main(int argc, char *argv[])
 	Main.arr[npc.getX()][npc.getY()] = npc.getSymbol();
 	Main.arr[enemy.getX()][enemy.getY()] = enemy.getSymbol();
 	Main.arr[player.getX()][player.getY()] = player.getSymbol();
-	
-	matrix();
 
 	while(Main.IsRunning) {
 		matrix();
@@ -204,9 +194,9 @@ int main(int argc, char *argv[])
 			case 'q': Main.IsRunning = 0;
 		}
 		
-		Main.arr[npc.getX()][npc.getY()] = '&';
-		Main.arr[enemy.getX()][enemy.getY()] = '@';
-		Main.arr[player.getX()][player.getY()] = '#';
+		Main.arr[npc.getX()][npc.getY()] = npc.getSymbol();
+		Main.arr[enemy.getX()][enemy.getY()] = enemy.getSymbol();
+		Main.arr[player.getX()][player.getY()] = player.getSymbol();
 		
 		if (player.collision_check(enemy)) {
 			Main.IsRunning = false;
